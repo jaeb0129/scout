@@ -27,6 +27,13 @@ service cloud.firestore {
       allow write: if false;
     }
 
+    // rosterChunks: sync.py가 만들어두는 선수 목록 스냅샷(카테고리당 문서 몇 개) - 프론트가
+    // players 컬렉션을 통째로 쿼리하는 대신 이 문서들만 읽어서 읽기 비용을 줄인다.
+    match /rosterChunks/{chunkId} {
+      allow read: if isAllowedUser();
+      allow write: if false;
+    }
+
     // reports: 선수 보고서(외부 링크) - 자동 배치가 아니라 허용된 팀 계정이 앱에서 직접 씀
     match /reports/{playerId} {
       allow read: if isAllowedUser();

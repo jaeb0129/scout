@@ -19,7 +19,7 @@ import json
 import os
 import re
 import time
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 
 import requests
 import firebase_admin
@@ -280,6 +280,51 @@ BATCH_MAX_COUNT = 150          # Firestore 문서 개수 제한(500)보다 훨�
 BATCH_MAX_BYTES = 3 * 1024 * 1024  # 요청 크기 제한(~10~11MB)보다 한참 낮은 3MB에서 미리 커밋
                                      # (JSON 근사치가 실제 protobuf 인코딩보다 작게 나올 수 있어 더 보수적으로 설정)
 
+CHUNK_MAX_BYTES = 700 * 1024   # 문서 1개당 1MB 제한보다 한참 낮게 잡은 청크 크기 (안전마진)
+
+
+def _chunk_players(players):
+    """선수 목록(dict 리스트)을 문서 1개(1MB 제한)에 안전하게 들어갈 크기로 쪼갠다.
+    프론트가 category(투수/타자)별로 이 청크 문서들만 읽으면 되게 해서, players 컬렉션
+    전체를 선수 수만큼 읽기 과금되는 쿼리로 긁어오지 않아도 되게 하기 위함
+    (meta/playerIds와 같은 목적의 최적화)."""
+    chunks = []
+    current, current_bytes = [], 0
+    for p in players:
+        p_bytes = _approx_doc_bytes(p)
+        if current and current_bytes + p_bytes > CHUNK_MAX_BYTES:
+            chunks.append(current)
+            current, current_bytes = [], 0
+        current.append(p)
+        current_bytes += p_bytes
+    chunks.append(current)  # 선수가 0명이어도 빈 배열 청크 1개는 만들어서 프론트가 항상 문서를 찾게 함
+    return chunks
+
+
+def write_roster_snapshot(db, roster_snapshot):
+    """카테고리별 전체 선수 목록을 rosterChunks/{category}_{i} 문서 몇 개로 쪼개 저장하고,
+    몇 개로 쪼갰는지는 meta/rosterSnapshot에 적어둔다. 프론트는 이 문서들만 읽어서 화면에
+    쓸 선수 목록을 구성한다 (players 컬렉션 전체 쿼리 대신).
+
+    이전 실행보다 청크가 줄었으면(로스터가 줄어든 경우) 안 쓰는 청크 문서가 계속 남지 않도록
+    정리한다 - 읽기 1회 + 필요할 때만 삭제 몇 건이라 할당량에 사실상 영향 없다."""
+    prev_snap = db.collection("meta").document("rosterSnapshot").get()
+    prev = prev_snap.to_dict() if prev_snap.exists else {}
+
+    manifest = {"updatedAt": firestore.SERVER_TIMESTAMP}
+    for category in ("pitcher", "batter"):
+        chunks = _chunk_players(roster_snapshot.get(category, []))
+        for i, chunk in enumerate(chunks):
+            db.collection("rosterChunks").document(f"{category}_{i}").set({"players": chunk})
+
+        prev_count = prev.get(f"{category}Chunks") or 0
+        for i in range(len(chunks), prev_count):
+            db.collection("rosterChunks").document(f"{category}_{i}").delete()
+
+        manifest[f"{category}Chunks"] = len(chunks)
+
+    db.collection("meta").document("rosterSnapshot").set(manifest)
+
 
 def sync_players(db, season):
     mlb_teams = get_teams(SPORT_MLB)
@@ -294,6 +339,11 @@ def sync_players(db, season):
     errors = []
     known_ids = set()  # meta/playerIds에 그대로 저장 - sync_metrics.py가 전체 컬렉션을 안 긁고
                         # 이 문서 1개만 읽어서 등록된 선수 id를 알 수 있게 하기 위함
+    roster_snapshot = {"pitcher": [], "batter": []}  # rosterChunks에 그대로 저장 - 프론트가
+                        # players 컬렉션을 통째로 쿼리하지 않고 이 스냅샷만 읽게 하기 위함
+    sync_time = datetime.now(timezone.utc)  # 스냅샷 배열 안에는 SERVER_TIMESTAMP를 못 써서
+                        # (필드 변환은 배열 원소 안에서 지원 안 됨) 대신 이 시각을 넣는다 -
+                        # 개별 선수 문서(players/{id})는 그대로 SERVER_TIMESTAMP를 씀
 
     def commit_if_needed(force=False):
         nonlocal batch, batch_count, batch_bytes
@@ -407,6 +457,10 @@ def sync_players(db, season):
                 batch_bytes += _approx_doc_bytes(doc)
                 processed += 1
                 known_ids.add(pid)
+
+                snapshot_doc = dict(doc)
+                snapshot_doc["updatedAt"] = sync_time
+                roster_snapshot[doc["category"]].append(snapshot_doc)
             except Exception as e:  # noqa: BLE001
                 errors.append(f"player {pid} failed: {e}")
 
@@ -438,6 +492,11 @@ def sync_players(db, season):
         "ids": sorted(known_ids),
         "updatedAt": firestore.SERVER_TIMESTAMP,
     })
+
+    # 프론트엔드(App.jsx)가 players 컬렉션을 통째로 쿼리하지 않고 여기 저장해둔 스냅샷만
+    # 읽도록 하기 위함 - 캐시가 없는 사용자(하루 중 첫 방문 등)가 접속할 때마다 선수 수만큼
+    # 읽기 과금이 나가던 걸, 카테고리당 청크 몇 개(보통 몇 개 수준)로 고정시킨다.
+    write_roster_snapshot(db, roster_snapshot)
 
     return processed, errors
 

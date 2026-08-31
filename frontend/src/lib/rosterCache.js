@@ -42,3 +42,12 @@ export function setCachedCategory(category, players, cacheKey) {
   store[category] = { syncedAt: cacheKey, players };
   writeStore(store);
 }
+
+// cacheKey가 최신인지 따지지 않고, 이 브라우저에 마지막으로 저장된 목록을 그냥 반환한다
+// (없으면 null). Firestore 조회 자체가 실패했을 때(할당량 초과 등) "그래도 마지막으로 봤던
+// 데이터는 계속 보여주자"는 용도 - App.jsx가 이 값을 쓸 땐 화면에 "실시간 확인 실패, 마지막
+// 저장 데이터 표시 중" 안내를 같이 띄워서 최신이 아닐 수 있음을 알린다.
+export function getStaleCategory(category) {
+  const store = readStore();
+  return store[category]?.players ?? null;
+}

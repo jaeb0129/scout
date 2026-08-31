@@ -1,6 +1,6 @@
 import React, { useEffect, useMemo, useState } from "react";
 import { onAuthStateChanged, signInWithPopup, signOut } from "firebase/auth";
-import { collection, doc, getDoc, getDocs, query, where } from "firebase/firestore";
+import { doc, getDoc } from "firebase/firestore";
 import { auth, googleProvider, db, isFirebaseConfigured } from "./firebase.js";
 import { ALLOWED_EMAILS } from "./allowedUsers.js";
 import { SAMPLE_PITCHERS, SAMPLE_BATTERS } from "./sampleData.js";
@@ -10,7 +10,7 @@ import PitcherTable from "./components/PitcherTable.jsx";
 import BatterTable from "./components/BatterTable.jsx";
 import PlayerModal from "./components/PlayerModal.jsx";
 import { combinedGamesStarted, combinedInnings, combinedPA, primaryEra, primaryOps, buildOrgOptions } from "./statUtils.js";
-import { getCachedCategory, setCachedCategory } from "./lib/rosterCache.js";
+import { getCachedCategory, setCachedCategory, getStaleCategory } from "./lib/rosterCache.js";
 
 export default function App() {
   const [user, setUser] = useState(isFirebaseConfigured ? undefined : { photoURL: "", displayName: "미리보기" });
@@ -145,19 +145,43 @@ export default function App() {
           return;
         }
 
-        // 3) 캐시가 없거나 오래됐을 때만 컬렉션 전체를 읽는다
-        const q = query(
-          collection(db, "players"),
-          where("level", "in", ["MLB", "AAA"]),
-          where("category", "==", category)
+        // 3) 캐시가 없거나 오래됐을 때만 서버에서 다시 읽는다.
+        //    players 컬렉션을 통째로 쿼리하면(선수 수만큼 읽기 과금) 캐시가 없는 사용자가
+        //    접속할 때마다 비용이 커지므로, scripts/sync.py가 동기화 때마다 미리 만들어두는
+        //    rosterChunks 스냅샷만 읽는다 - meta/rosterSnapshot에서 이 카테고리가 몇 개
+        //    청크로 쪼개졌는지 확인한 뒤, 그 청크 문서들만 읽으면 끝난다 (선수가 몇 명이든
+        //    보통 몇 개 수준의 읽기로 고정된다).
+        const manifestSnap = await getDoc(doc(db, "meta", "rosterSnapshot"));
+        if (!manifestSnap.exists()) {
+          throw new Error(
+            "meta/rosterSnapshot이 없습니다 - scripts/sync.py를 최신 버전으로 한 번 더 실행해주세요."
+          );
+        }
+        const chunkCount = manifestSnap.data()[`${category}Chunks`] || 0;
+        const chunkSnaps = await Promise.all(
+          Array.from({ length: chunkCount }, (_, i) =>
+            getDoc(doc(db, "rosterChunks", `${category}_${i}`))
+          )
         );
-        const snap = await getDocs(q);
         if (cancelled) return;
-        const list = snap.docs.map((d) => d.data());
+        const list = chunkSnaps.flatMap((s) => (s.exists() ? s.data().players || [] : []));
         setCachedCategory(category, list, cacheKey);
         setCache((c) => ({ ...c, [category]: list }));
       } catch (e) {
-        if (!cancelled) setError(e.message || "데이터를 불러오지 못했습니다.");
+        if (cancelled) return;
+        // Firestore 조회 자체가 실패했을 때(할당량 초과 등) - 이 브라우저에 마지막으로
+        // 저장해둔 데이터가 있으면(신선한지 여부와 무관하게) 그거라도 보여준다. 캐시가
+        // 있는 사용자가 할당량 초과 때문에 빈 화면만 보게 되는 걸 막기 위함. 캐시가 아예
+        // 없는 사용자(처음 방문 등)는 지금처럼 오류만 표시한다.
+        const stale = getStaleCategory(category);
+        if (stale) {
+          setCache((c) => ({ ...c, [category]: stale }));
+          setError(
+            `실시간 확인에 실패해 마지막으로 저장된 데이터를 보여드리고 있습니다 (${e.message || "네트워크/할당량 오류"}).`
+          );
+        } else {
+          setError(e.message || "데이터를 불러오지 못했습니다.");
+        }
       } finally {
         if (!cancelled) setLoading(false);
       }

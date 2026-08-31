@@ -95,7 +95,7 @@ meta/lastSync
 }
 ```
 
-## 컬렉션: `meta` (읽기 비용 최적화용)
+## 컬렉션: `meta` / `rosterChunks` (읽기 비용 최적화용)
 ```
 meta/playerIds
 {
@@ -108,6 +108,25 @@ meta/playerIds
 과금되기 때문에, 지표 스크립트를 개발 중에 여러 번 돌리면 Firestore 무료 읽기 할당량(5만/일)을
 순식간에 다 써버릴 수 있다 (실제로 겪은 문제). 이 문서가 없으면(sync.py를 이 변경 이전 버전으로
 마지막에 돌렸거나 최초 실행인 경우) `sync_metrics.py`는 예전 방식(전체 컬렉션 스캔)으로 폴백한다.
+
+```
+meta/rosterSnapshot
+{
+  pitcherChunks: number,   // rosterChunks/pitcher_0 ~ pitcher_{N-1} 문서 개수
+  batterChunks: number,    // rosterChunks/batter_0 ~ batter_{N-1} 문서 개수
+  updatedAt: timestamp,
+}
+
+rosterChunks/{category}_{i}   // 예: rosterChunks/pitcher_0, rosterChunks/batter_2
+{
+  players: object[],   // players/{id} 문서와 같은 필드 구조를 그대로 담은 배열 (한 청크당 문서 1MB 제한
+                        // 안에 들어가도록 700KB 안전마진으로 쪼갬 - scripts/sync.py의 _chunk_players 참고)
+}
+```
+같은 이유로, 프론트엔드(`App.jsx`)가 투수/타자 목록을 보여줄 때 `players` 컬렉션을 통째로
+쿼리하지 않고(선수 수만큼 읽기 과금) 이 스냅샷만 읽도록 바꿨다. 캐시가 없는 사용자가 접속할
+때마다 카테고리당 읽기 비용이 선수 수(수천 건)에서 청크 개수(보통 몇 건)로 고정된다. `sync.py`가
+로스터 동기화를 끝낼 때마다 통째로 다시 쓰고, 이전 실행보다 청크가 줄었으면 안 쓰는 문서는 정리한다.
 
 ## 팀 필터 동작 원리
 `orgId`를 MLB 모기업 기준으로 통일해뒀기 때문에, 프론트엔드에서 팀 드롭다운으로
