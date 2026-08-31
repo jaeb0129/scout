@@ -175,7 +175,21 @@ def fetch_pitch_df(engine, table, season):
 def get_known_player_ids(db):
     """Firestore players 컬렉션에 이미 등록된(로스터 동기화가 만들어둔) 선수 id 집합.
     이 집합에 없는 id는 지표를 계산해도 저장하지 않는다 - pbp/aaa에는 있지만 지금 추적 대상이
-    아닌(과거 시즌 데이터 등) 선수의 문서를 새로 만들어버리는 걸 막기 위함."""
+    아닌(과거 시즌 데이터 등) 선수의 문서를 새로 만들어버리는 걸 막기 위함.
+
+    구현 노트: players 컬렉션을 통째로 스캔하면(.select([])를 써도 문서 수만큼 읽기로 과금됨)
+    이 스크립트를 개발 중에 여러 번 돌릴 때마다 Firestore 무료 읽기 할당량(5만/일)을 순식간에
+    다 써버린다 - 실제로 겪은 문제다. 그래서 sync.py가 로스터 동기화를 끝낼 때마다 미리 만들어두는
+    meta/playerIds(문서 1개, id 배열만 담음)를 대신 읽는다 - 선수가 몇 명이든 읽기 1회로 끝난다.
+    그 문서가 아직 없으면(sync.py를 이 변경 이전 버전으로 마지막에 돌렸거나 최초 실행인 경우)
+    예전 방식(전체 컬렉션 스캔)으로 안전하게 폴백한다."""
+    snap = db.collection("meta").document("playerIds").get()
+    if snap.exists:
+        ids = (snap.to_dict() or {}).get("ids") or []
+        return {int(i) for i in ids}
+
+    print("  meta/playerIds 문서가 없어 players 컬렉션 전체를 스캔합니다 "
+          "(sync.py를 최신 버전으로 한 번 더 돌리면 다음부터는 이 스캔을 안 합니다).")
     docs = db.collection("players").select([]).stream()
     return {int(d.id) for d in docs}
 

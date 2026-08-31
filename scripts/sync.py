@@ -292,6 +292,8 @@ def sync_players(db, season):
     batch_bytes = 0
     processed = 0
     errors = []
+    known_ids = set()  # meta/playerIds에 그대로 저장 - sync_metrics.py가 전체 컬렉션을 안 긁고
+                        # 이 문서 1개만 읽어서 등록된 선수 id를 알 수 있게 하기 위함
 
     def commit_if_needed(force=False):
         nonlocal batch, batch_count, batch_bytes
@@ -404,6 +406,7 @@ def sync_players(db, season):
                 batch_count += 1
                 batch_bytes += _approx_doc_bytes(doc)
                 processed += 1
+                known_ids.add(pid)
             except Exception as e:  # noqa: BLE001
                 errors.append(f"player {pid} failed: {e}")
 
@@ -426,6 +429,16 @@ def sync_players(db, season):
         "errors": errors[:50],
         "season": season,
     })
+
+    # scripts/sync_metrics.py가 "등록된 선수 id" 확인용으로 players 컬렉션을 통째로 스캔하지 않고
+    # 이 문서 1개만 읽도록 하기 위한 인덱스. (컬렉션 전체 스캔은 선수 수만큼 읽기로 과금되어,
+    # 지표 스크립트를 개발 중에 여러 번 돌리면 Firestore 무료 할당량을 순식간에 다 써버린다 -
+    # 실제로 겪은 문제라 여기서 막아둔다.)
+    db.collection("meta").document("playerIds").set({
+        "ids": sorted(known_ids),
+        "updatedAt": firestore.SERVER_TIMESTAMP,
+    })
+
     return processed, errors
 
 
