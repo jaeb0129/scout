@@ -1,0 +1,27 @@
+name: Sync MLB/AAA scouting data
+
+on:
+  schedule:
+    # 매일 UTC 21:00 = 한국시간(KST) 06:00
+    - cron: "0 21 * * *"
+  workflow_dispatch: {}   # Actions 탭에서 "Run workflow" 버튼으로 수동 실행 가능
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install dependencies
+        run: pip install -r scripts/requirements.txt
+
+      - name: Run sync script
+        env:
+          FIREBASE_SERVICE_ACCOUNT_KEY: ${{ secrets.FIREBASE_SERVICE_ACCOUNT_KEY }}
+        run: python scripts/sync.py

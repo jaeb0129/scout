@@ -1,0 +1,514 @@
+/* 최소 스타일 - 레이아웃/기능만 유지, 브랜드 색상·폰트·장식 요소는 전부 제거했습니다.
+   원하는 스타일로 자유롭게 다시 입히시면 됩니다. */
+
+* { box-sizing: border-box; }
+
+body {
+  margin: 0;
+  font-family: system-ui, sans-serif;
+  color: #111;
+  background: #fff;
+}
+
+.app {
+  min-height: 100%;
+  display: flex;
+  flex-direction: column;
+}
+
+.topbar {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 16px;
+  border-bottom: 1px solid #ddd;
+}
+
+.brand {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.orb {
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  background: #ccc;
+  flex-shrink: 0;
+}
+
+.searchbox {
+  flex: 1;
+  max-width: 400px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  border: 1px solid #ccc;
+  border-radius: 6px;
+  padding: 6px 10px;
+}
+.searchbox input {
+  border: none;
+  outline: none;
+  width: 100%;
+  font-size: 14px;
+}
+
+.userchip {
+  margin-left: auto;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.userchip img { width: 24px; height: 24px; border-radius: 50%; }
+.linkbtn {
+  border: 1px solid #ccc;
+  background: #fff;
+  border-radius: 4px;
+  padding: 4px 10px;
+  font-size: 13px;
+  cursor: pointer;
+}
+
+/* 탭 */
+.subtabs {
+  display: flex;
+  gap: 4px;
+  padding: 0 16px;
+  border-bottom: 1px solid #ddd;
+}
+.subtab {
+  padding: 10px 14px;
+  font-size: 14px;
+  border: none;
+  background: none;
+  cursor: pointer;
+  border-bottom: 2px solid transparent;
+}
+.subtab.active {
+  border-bottom-color: #333;
+  font-weight: 600;
+}
+
+/* 콘텐츠 */
+.content {
+  padding: 16px;
+  max-width: 1000px;
+  width: 100%;
+  margin: 0 auto;
+}
+
+.scout-header {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-bottom: 12px;
+}
+.scout-title {
+  font-weight: 600;
+  font-size: 16px;
+}
+
+.pill {
+  border-radius: 4px;
+  padding: 6px 12px;
+  font-size: 13px;
+  border: 1px solid #ccc;
+  background: #fff;
+  cursor: pointer;
+}
+.pill.on {
+  background: #333;
+  color: #fff;
+  border-color: #333;
+}
+.pill.subtle-on {
+  background: #eee;
+}
+
+.segrow { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; margin-bottom: 8px; }
+.seglabel { font-size: 13px; margin-right: 4px; }
+.segment {
+  display: flex;
+  border: 1px solid #ccc;
+  border-radius: 4px;
+  overflow: hidden;
+}
+.segment button {
+  border: none;
+  background: #fff;
+  padding: 6px 10px;
+  font-size: 13px;
+  cursor: pointer;
+  border-right: 1px solid #ccc;
+}
+.segment button:last-child { border-right: none; }
+.segment button.on {
+  background: #333;
+  color: #fff;
+}
+
+.chiprow { display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: 12px; }
+.chip {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  border-radius: 4px;
+  padding: 5px 10px;
+  font-size: 13px;
+  border: 1px solid #ccc;
+  background: #fff;
+  cursor: pointer;
+}
+.chip .dot { width: 6px; height: 6px; border-radius: 50%; background: currentColor; }
+.chip.on { background: #333; color: #fff; border-color: #333; }
+
+.sliderow {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 14px;
+  font-size: 13px;
+}
+.sliderow input[type="range"] { flex: 1; }
+.sliderow .val { min-width: 24px; text-align: right; }
+
+/* 테이블 */
+.table-wrap {
+  border: 1px solid #ddd;
+  border-radius: 6px;
+  overflow-x: auto;
+}
+.table-head {
+  padding: 10px 14px;
+  font-size: 12px;
+  border-bottom: 1px solid #ddd;
+  background: #f7f7f7;
+  font-weight: 600;
+}
+.row {
+  padding: 10px 14px;
+  border-bottom: 1px solid #eee;
+}
+.row:last-child { border-bottom: none; }
+
+.table-head, .row {
+  display: grid;
+  align-items: center;
+}
+.pitcher-grid { grid-template-columns: 220px 120px repeat(var(--stat-cols, 7), 56px) 110px; }
+.batter-grid { grid-template-columns: 220px 120px repeat(var(--stat-cols, 8), 56px) 110px; }
+
+.biocell {
+  font-size: 12px;
+  color: #444;
+}
+.bio-sub {
+  font-size: 11px;
+  color: #999;
+}
+
+.statcell {
+  font-size: 13px;
+  font-variant-numeric: tabular-nums;
+}
+.stat-line {
+  line-height: 1.5;
+  white-space: nowrap;
+}
+.lvl-tag {
+  display: inline-block;
+  width: 14px;
+  font-size: 10px;
+  font-weight: 700;
+  color: #999;
+}
+
+/* 상태별 행 음영 - 한눈에 구분되도록 */
+.status-active { background: #fff; }
+.status-il { background: #fff3f3; }
+.status-dfa { background: #fff6e8; }
+.status-released { background: #f2f2f2; }
+.status-fa { background: #eef5ff; }
+.status-off40 { background: #f5f0ff; }
+.status-on40 { background: #eefaf3; }
+
+/* 팀(소속) 필터 드롭다운 */
+.teamselect {
+  border: 1px solid #ccc;
+  border-radius: 4px;
+  padding: 6px 10px;
+  font-size: 13px;
+  background: #fff;
+}
+
+/* 필터 아래 설명 주석 */
+.filter-note {
+  font-size: 12px;
+  color: #777;
+  margin: -4px 0 10px;
+}
+
+/* 마지막 업데이트 시각 */
+.lastsync {
+  padding: 6px 16px;
+  font-size: 12px;
+  color: #888;
+  border-bottom: 1px solid #eee;
+}
+
+.playercell { display: flex; align-items: center; gap: 10px; }
+.playercell-clickable {
+  cursor: pointer;
+  border-radius: 4px;
+  margin: -4px -6px;
+  padding: 4px 6px;
+}
+.playercell-clickable:hover { background: #f2f2f2; }
+.playercell-clickable:focus-visible { outline: 2px solid #333; outline-offset: 1px; }
+.headshot {
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  object-fit: cover;
+  background: #eee;
+  border: 1px solid #ddd;
+  flex-shrink: 0;
+}
+.playername { font-weight: 600; font-size: 14px; }
+.playersub { font-size: 12px; color: #666; }
+
+.status-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 12px;
+  padding: 4px 10px;
+  border-radius: 4px;
+  border: 1px solid #ccc;
+}
+.status-pill .dot { width: 6px; height: 6px; border-radius: 50%; background: currentColor; }
+.status-date { font-size: 11px; color: #888; margin-top: 2px; }
+
+/* 상태별 색상은 최소한만 남김 (필요없으면 전부 지워도 됨) */
+.s-ok, .s-accent, .s-off40, .s-danger, .s-neutral {
+  color: #333;
+  background: #fff;
+  border-color: #ccc;
+}
+
+/* 하단 네비 */
+.bottomnav {
+  margin-top: auto;
+  position: sticky;
+  bottom: 0;
+  display: flex;
+  justify-content: space-around;
+  padding: 8px;
+  border-top: 1px solid #ddd;
+  background: #fff;
+}
+.navitem {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 3px;
+  font-size: 11px;
+  color: #666;
+  background: none;
+  border: none;
+  cursor: pointer;
+}
+.navitem.active { color: #111; font-weight: 600; }
+
+/* 상태 표시 */
+.loading, .empty, .gate {
+  padding: 40px 16px;
+  text-align: center;
+  color: #666;
+  font-size: 14px;
+}
+.gate {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+  min-height: 60vh;
+  justify-content: center;
+}
+.gate button {
+  border: 1px solid #333;
+  background: #333;
+  color: #fff;
+  border-radius: 4px;
+  padding: 8px 20px;
+  cursor: pointer;
+}
+
+.errbanner {
+  background: #fee;
+  border: 1px solid #f99;
+  color: #900;
+  padding: 8px 12px;
+  border-radius: 4px;
+  font-size: 13px;
+  margin-bottom: 12px;
+}
+
+
+/* 선수 상세 모달 */
+.modal-backdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.4);
+  display: flex;
+  align-items: flex-start;
+  justify-content: center;
+  padding: 40px 16px;
+  overflow-y: auto;
+  z-index: 100;
+}
+.modal {
+  position: relative;
+  background: #fff;
+  border-radius: 8px;
+  width: 100%;
+  max-width: 560px;
+  padding: 20px;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
+}
+.modal-close {
+  position: absolute;
+  top: 12px;
+  right: 12px;
+  border: none;
+  background: none;
+  font-size: 16px;
+  cursor: pointer;
+  color: #666;
+  padding: 4px;
+  line-height: 1;
+}
+.modal-header {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding-right: 24px;
+}
+.modal-headshot { width: 56px; height: 56px; }
+.modal-name { font-weight: 700; font-size: 18px; }
+.modal-sub { font-size: 13px; color: #666; margin-top: 2px; }
+
+.modal-links {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin: 16px 0;
+}
+.modal-linkbtn {
+  border: 1px solid #ccc;
+  border-radius: 4px;
+  padding: 6px 12px;
+  font-size: 13px;
+  color: #111;
+  text-decoration: none;
+  background: #fafafa;
+}
+.modal-linkbtn:hover { background: #eee; }
+
+.modal-subtabs { padding: 0; margin-bottom: 10px; }
+
+.rr-table {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 1px;
+  background: #eee;
+  border: 1px solid #eee;
+  border-radius: 6px;
+  overflow: hidden;
+  margin-bottom: 16px;
+}
+.rr-cell {
+  background: #fafafa;
+  padding: 8px 6px;
+  text-align: center;
+}
+.rr-label {
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: 0.02em;
+  color: #888;
+  text-decoration: underline;
+  margin-bottom: 3px;
+}
+.rr-value {
+  font-size: 14px;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+}
+.rr-empty {
+  font-size: 12px;
+  color: #888;
+  padding: 8px 2px;
+  margin-bottom: 12px;
+}
+
+.modal-body { font-size: 13px; }
+.modal-note {
+  margin-top: 14px;
+  font-size: 11px;
+  color: #999;
+  line-height: 1.5;
+}
+
+.txn-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  max-height: 320px;
+  overflow-y: auto;
+  border: 1px solid #eee;
+  border-radius: 6px;
+}
+.txn-item {
+  padding: 8px 12px;
+  border-bottom: 1px solid #eee;
+}
+.txn-item:last-child { border-bottom: none; }
+.txn-date {
+  font-size: 11px;
+  color: #888;
+  font-variant-numeric: tabular-nums;
+  margin-bottom: 2px;
+}
+.txn-desc { font-size: 13px; line-height: 1.4; }
+
+/* 선수 보고서(reports/{playerId}) 링크 */
+.report-section { margin: 0 0 16px; }
+.report-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+.report-empty { font-size: 13px; color: #888; }
+.report-editbtn { font-size: 12px; }
+.report-form {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.report-input {
+  border: 1px solid #ccc;
+  border-radius: 4px;
+  padding: 6px 10px;
+  font-size: 13px;
+  width: 100%;
+}
+.report-form-actions { display: flex; gap: 8px; }
+.report-meta { font-size: 11px; color: #999; }
+.report-err { margin: 0; }

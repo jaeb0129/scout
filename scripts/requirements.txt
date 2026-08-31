@@ -1,0 +1,8 @@
+requests>=2.31.0
+firebase-admin>=6.5.0
+
+# --- 지표 동기화(sync_metrics.py)용 ---
+pandas>=2.0.0
+SQLAlchemy>=2.0.0
+PyMySQL>=1.1.0
+python-dotenv>=1.0.0

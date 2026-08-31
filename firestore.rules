@@ -1,0 +1,38 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // 허용된 팀 계정만 통과 - 여기 목록은 frontend/src/allowedUsers.js의 ALLOWED_EMAILS와
+    // 반드시 같게 유지할 것. 이메일 위조를 막기 위해 email_verified도 같이 확인한다.
+    // (구글 로그인은 항상 인증된 이메일만 내려주므로 정상 사용 시엔 항상 true)
+    function isAllowedUser() {
+      return request.auth != null
+        && request.auth.token.email_verified == true
+        && request.auth.token.email in [
+          'doosanbearsdata@gmail.com',
+          'jaeb129@gmail.com'
+        ];
+    }
+
+    // players, meta 컬렉션: 허용된 팀 계정만 읽기 가능
+    // 쓰기는 클라이언트에서 절대 불가 - Cloud Function(Admin SDK)만 씀
+    match /players/{playerId} {
+      allow read: if isAllowedUser();
+      allow write: if false;
+    }
+
+    match /meta/{docId} {
+      allow read: if isAllowedUser();
+      allow write: if false;
+    }
+
+    // reports: 선수 보고서(외부 링크) - 자동 배치가 아니라 허용된 팀 계정이 앱에서 직접 씀
+    match /reports/{playerId} {
+      allow read: if isAllowedUser();
+      allow write: if isAllowedUser()
+        && request.resource.data.keys().hasOnly(['url', 'title', 'updatedAt', 'updatedBy'])
+        && request.resource.data.url is string;
+    }
+  }
+}
